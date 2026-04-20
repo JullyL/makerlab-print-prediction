@@ -58,7 +58,7 @@ This project is split across 6 owners over 4 weeks, with two independent tracks 
 - Owner B (critical path, preprocessing lead): imputation, one-hot encoding, min-max scaling on train split only, stratified 70/15/15 split, and export of `train.npz`, `val.npz`, `test.npz`, `scaler_params.json`, and `feature_cols.json`.
 - Owner C (parser + app shell): extract real-print features from `.gcode.3mf` files into `real_prints_features.csv`, then build Streamlit app skeleton and wire preprocessing artifacts for inference.
 - Owner D (labeling lead): define labeling rubric, label timelapse outcomes, produce `labels.csv`, and join with C's features to create `real_eval.csv`.
-- Owner E (logistic regression lead): implement LR from scratch (NumPy), use weighted loss, tune on validation, report metrics on test, and integrate LR weights into Streamlit.
+- Hannah Liang (logistic regression lead): implement LR from scratch (NumPy), use weighted loss, tune on validation, report metrics on test, and integrate LR weights into Streamlit.
 - Owner F (neural network + final eval lead): implement NN from scratch (NumPy), tune on validation, run final synthetic + real-data evaluation, produce LR-vs-NN comparison outputs, and integrate NN weights into Streamlit.
 
 ### Key dependencies and rules
