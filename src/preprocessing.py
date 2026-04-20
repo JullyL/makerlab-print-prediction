@@ -1,7 +1,4 @@
 """
-Owner B — Preprocessing pipeline
-See notebooks/02_preprocessing.ipynb for the full implementation.
-"""
 Responsibilities:
   - Load feature candidates from EDA handoff (feature_candidates.json)
   - Median imputation for numeric features (fit on train only)
@@ -15,6 +12,15 @@ Responsibilities:
       data/processed/feature_cols.json
       data/processed/ohe_cols.json
 
+scaler_params.json format (matches 02_preprocessing.ipynb):
+  {
+    "numeric_cols":    [...],
+    "min":             {"col": float, ...},
+    "max":             {"col": float, ...},
+    "median_impute":   {"col": float, ...},
+    "mode_impute":     {"col": str,   ...}
+  }
+
 Usage:
   from src.preprocessing import run_preprocessing
   run_preprocessing("data/raw/makerlab_dataset_5000_rows.csv")
@@ -27,7 +33,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 
-# ── helpers ──────────────────────────────────────────────────────────────────
+# ── helpers ───────────────────────────────────────────────────────────────────
 
 def load_feature_candidates(json_path="data/raw/feature_candidates.json"):
     with open(json_path) as f:
@@ -47,7 +53,7 @@ def load_dataset(csv_path, fc):
 
 def fit_imputer(train_df, numeric_cols, categorical_cols):
     """Fit imputation values on train split only.
-    Uses median for numeric, mode for categorical."""
+    Median for numeric, mode for categorical."""
     imputer = {}
     for col in numeric_cols:
         imputer[col] = float(train_df[col].median())
@@ -66,11 +72,7 @@ def apply_imputer(df, imputer):
 # ── one-hot encoding ──────────────────────────────────────────────────────────
 
 def fit_ohe(train_df, categorical_cols):
-    """
-    Returns a dict mapping each categorical column to its sorted unique
-    categories seen in training. First category is dropped during encoding
-    to avoid the dummy variable trap.
-    """
+    """Returns sorted categories per column seen in training (all 5, no drop)."""
     ohe_map = {}
     for col in categorical_cols:
         cats = sorted(train_df[col].dropna().unique().tolist())
@@ -79,14 +81,11 @@ def fit_ohe(train_df, categorical_cols):
 
 
 def apply_ohe(df, ohe_map):
-    """
-    Applies one-hot encoding using categories from ohe_map (all 5 columns, no drop).
-    Returns (encoded_df, list_of_new_column_names).
-    """
+    """Applies one-hot encoding — 5 binary columns per the spec (no drop-first)."""
     df = df.copy()
     ohe_cols = []
     for col, cats in ohe_map.items():
-        for cat in cats:  # all categories — 5 binary columns per the spec
+        for cat in cats:
             new_col = f"{col}_{cat}"
             df[new_col] = (df[col] == cat).astype(float)
             ohe_cols.append(new_col)
@@ -96,28 +95,33 @@ def apply_ohe(df, ohe_map):
 
 # ── min-max scaling ───────────────────────────────────────────────────────────
 
-def fit_scaler(train_df, numeric_cols):
+def fit_scaler(train_df, numeric_cols, imputer):
     """
     Fits min-max scaler on train split only.
-    Returns dict: {col: {"min": float, "max": float}}.
+    Format matches 02_preprocessing.ipynb:
+    {
+        "numeric_cols":   [...],
+        "min":            {col: float, ...},
+        "max":            {col: float, ...},
+        "median_impute":  {col: float, ...},
+        "mode_impute":    {col: str,   ...}
+    }
     """
-    scaler = {}
-    for col in numeric_cols:
-        scaler[col] = {
-            "min": float(train_df[col].min()),
-            "max": float(train_df[col].max()),
-        }
-    return scaler
+    return {
+        "numeric_cols":  numeric_cols,
+        "min":           {col: float(train_df[col].min()) for col in numeric_cols},
+        "max":           {col: float(train_df[col].max()) for col in numeric_cols},
+        "median_impute": {col: v for col, v in imputer.items() if isinstance(v, float)},
+        "mode_impute":   {col: v for col, v in imputer.items() if isinstance(v, str)},
+    }
 
 
 def apply_scaler(df, scaler):
-    """
-    Applies min-max scaling. Clips to [0, 1] to handle any out-of-range
-    values in val/test that weren't seen in training.
-    """
+    """Applies min-max scaling. Clips to [0,1] for out-of-range val/test values."""
     df = df.copy()
-    for col, params in scaler.items():
-        col_min, col_max = params["min"], params["max"]
+    for col in scaler["numeric_cols"]:
+        col_min = scaler["min"][col]
+        col_max = scaler["max"][col]
         rng = col_max - col_min
         if rng == 0:
             df[col] = 0.0
@@ -129,33 +133,37 @@ def apply_scaler(df, scaler):
 
 # ── inference helper (for Owner C / Streamlit) ────────────────────────────────
 
-def preprocess_single(raw_dict, feature_cols, scaler, ohe_map, imputer):
+def preprocess_single(raw_dict, feature_cols, scaler, ohe_map):
     """
-    Transform a single raw print-settings dict (as returned by parse_3mf)
-    into a feature vector ready for model inference.
+    Transform a single raw print-settings dict into a feature vector
+    ready for model inference.
 
     Args:
-        raw_dict     : dict with raw feature values (keys = original col names)
+        raw_dict     : dict with raw feature values
         feature_cols : list from feature_cols.json
         scaler       : dict from scaler_params.json
         ohe_map      : dict from ohe_cols.json
-        imputer      : dict (median/mode values, re-derived or stored separately)
 
     Returns:
         np.ndarray of shape (1, n_features), dtype float32
     """
     df = pd.DataFrame([raw_dict])
 
-    # Impute
-    df = apply_imputer(df, imputer)
+    # Impute using stored values inside scaler
+    for col, val in scaler["median_impute"].items():
+        if col in df.columns:
+            df[col] = df[col].fillna(val)
+    for col, val in scaler["mode_impute"].items():
+        if col in df.columns:
+            df[col] = df[col].fillna(val)
 
     # OHE
     df, _ = apply_ohe(df, ohe_map)
 
-    # Scale numeric cols that exist in scaler
+    # Scale
     df = apply_scaler(df, scaler)
 
-    # Align to expected feature order, fill missing with 0
+    # Align to expected feature order
     for col in feature_cols:
         if col not in df.columns:
             df[col] = 0.0
@@ -179,10 +187,10 @@ def run_preprocessing(
 
     Steps:
       1. Load feature candidates and dataset
-      2. Stratified 70/15/15 split  ← split BEFORE fitting anything
+      2. Stratified 70/15/15 split  ← BEFORE fitting anything
       3. Fit imputer on train, apply to all splits
       4. Fit OHE on train, apply to all splits
-      5. Fit min-max scaler on train (numeric cols), apply to all splits
+      5. Fit min-max scaler on train (numeric cols only), apply to all splits
       6. Save .npz and JSON artifacts to output_dir
     """
     os.makedirs(output_dir, exist_ok=True)
@@ -190,16 +198,16 @@ def run_preprocessing(
     # 1. Load
     fc = load_feature_candidates(feature_json_path)
     df = load_dataset(csv_path, fc)
-    numeric_cols = fc["numeric"]
+    numeric_cols     = fc["numeric"]
     categorical_cols = fc["categorical"]
-    target_col = fc["target"]
+    target_col       = fc["target"]
 
     if verbose:
+        total = len(df)
+        n_fail = df[target_col].sum()
         print(f"Dataset loaded: {df.shape[0]} rows")
         print(f"  Numeric features    : {len(numeric_cols)}")
         print(f"  Categorical features: {len(categorical_cols)}")
-        total = len(df)
-        n_fail = df[target_col].sum()
         print(f"  Class balance       : {n_fail}/{total} failures ({n_fail/total*100:.1f}%)")
 
     # 2. Stratified split — BEFORE fitting anything
@@ -216,6 +224,7 @@ def run_preprocessing(
     )
 
     if verbose:
+        total = len(y_train) + len(y_val) + len(y_test)
         print(f"\nSplit (stratified):")
         print(f"  Train : {len(X_train):4d}  ({len(X_train)/total*100:.1f}%)")
         print(f"  Val   : {len(X_val):4d}  ({len(X_val)/total*100:.1f}%)")
@@ -227,7 +236,7 @@ def run_preprocessing(
     X_val   = apply_imputer(X_val,   imputer)
     X_test  = apply_imputer(X_test,  imputer)
 
-    # 4. One-hot encoding (fit on train only)
+    # 4. OHE (fit on train only)
     ohe_map = fit_ohe(X_train, categorical_cols)
     X_train, ohe_cols = apply_ohe(X_train, ohe_map)
     X_val,   _        = apply_ohe(X_val,   ohe_map)
@@ -237,7 +246,7 @@ def run_preprocessing(
     feature_cols = numeric_cols + ohe_cols
 
     # 5. Min-max scaling (fit on train only, numeric cols only)
-    scaler = fit_scaler(X_train, numeric_cols)
+    scaler = fit_scaler(X_train, numeric_cols, imputer)
     X_train = apply_scaler(X_train, scaler)
     X_val   = apply_scaler(X_val,   scaler)
     X_test  = apply_scaler(X_test,  scaler)
@@ -286,4 +295,3 @@ def run_preprocessing(
         "ohe_map": ohe_map,
         "imputer": imputer,
     }
-
