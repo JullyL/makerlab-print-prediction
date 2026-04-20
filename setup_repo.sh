@@ -27,7 +27,7 @@ git add .
 git commit -m "feat: initial project structure
 
 - Add README with full team role assignments and shared interfaces
-- Add Owner A EDA notebook (01_eda.ipynb) with all 10 sections pre-built
+- Add Jully Li EDA notebook (01_eda.ipynb) with all 10 sections pre-built
 - Add stub notebooks for Owners B, E, F
 - Add stub src/ modules for all owners
 - Add Streamlit app skeleton
@@ -40,6 +40,6 @@ git push -u origin main
 echo ""
 echo "Done! Repo is live at https://github.com/JullyL/makerlab-print-prediction"
 echo ""
-echo "Next steps for Owner A:"
+echo "Next steps for Jully Li:"
 echo "  pip install -r requirements.txt"
 echo "  jupyter notebook notebooks/01_eda.ipynb"
