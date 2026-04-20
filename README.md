@@ -34,6 +34,22 @@ Run EDA notebook:
 jupyter notebook notebooks/01_eda.ipynb
 ```
 
+## Running the Streamlit app
+
+Make sure dependencies are installed (see Getting started above), then run from the repo root:
+
+```bash
+streamlit run streamlit_app/app.py
+```
+
+The app will open at `http://localhost:8501` by default. It expects the preprocessing artifacts (`scaler_params.json`, `feature_cols.json`, `ohe_cols.json`) to be present in `data/raw/processed/`. Model weights (`lr_weights.pkl`, `nn_weights.pkl`) in `models/` are optional — the app shows placeholder cards until they are available.
+
+To extract G-code features from a folder of `.gcode.3mf` files and write `real_prints_features.csv`:
+
+```bash
+python -m src.parse_3mf --input_dir ./3mf_files --output real_prints_features.csv
+```
+
 ## Large dataset setup (no Git LFS)
 
 `data/raw/makerlab_dataset_5000_rows.csv` is intentionally not tracked in git because it exceeds GitHub's 100MB file limit.
