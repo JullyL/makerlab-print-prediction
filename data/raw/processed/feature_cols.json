@@ -1,0 +1,22 @@
+[
+  "nozzle_temperature",
+  "nozzle_temperature_initial_layer",
+  "layer_height",
+  "initial_layer_print_height",
+  "inner_wall_speed",
+  "outer_wall_speed",
+  "bridge_speed",
+  "fan_max_speed",
+  "sparse_infill_density",
+  "bottom_shell_layers",
+  "top_shell_layers",
+  "wall_loops",
+  "retraction_length",
+  "retraction_speed",
+  "enable_support",
+  "filament_type_ABS",
+  "filament_type_PC",
+  "filament_type_PETG",
+  "filament_type_PLA",
+  "filament_type_TPU"
+]
