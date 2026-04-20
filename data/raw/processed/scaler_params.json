@@ -1,0 +1,62 @@
+{
+  "nozzle_temperature": {
+    "min": 180.0,
+    "max": 300.0
+  },
+  "nozzle_temperature_initial_layer": {
+    "min": 220.0,
+    "max": 270.0
+  },
+  "layer_height": {
+    "min": 0.08,
+    "max": 0.4
+  },
+  "initial_layer_print_height": {
+    "min": 0.2,
+    "max": 0.2
+  },
+  "inner_wall_speed": {
+    "min": 20.0,
+    "max": 500.0
+  },
+  "outer_wall_speed": {
+    "min": 20.0,
+    "max": 461.84
+  },
+  "bridge_speed": {
+    "min": 10.0,
+    "max": 101.34
+  },
+  "fan_max_speed": {
+    "min": 1.2,
+    "max": 100.0
+  },
+  "sparse_infill_density": {
+    "min": 0.0,
+    "max": 41.36
+  },
+  "bottom_shell_layers": {
+    "min": 3.0,
+    "max": 3.0
+  },
+  "top_shell_layers": {
+    "min": 5.0,
+    "max": 5.0
+  },
+  "wall_loops": {
+    "min": 2.0,
+    "max": 2.0
+  },
+  "retraction_length": {
+    "min": 0.0,
+    "max": 3.6
+  },
+  "retraction_speed": {
+    "min": 30.0,
+    "max": 30.0
+  },
+  "enable_support": {
+    "min": 0.0,
+    "max": 0.0
+  }
+}
