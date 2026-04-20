@@ -34,6 +34,22 @@ Run EDA notebook:
 jupyter notebook notebooks/01_eda.ipynb
 ```
 
+## Running the Streamlit app
+
+Make sure dependencies are installed (see Getting started above), then run from the repo root:
+
+```bash
+streamlit run streamlit_app/app.py
+```
+
+The app will open at `http://localhost:8501` by default. It expects the preprocessing artifacts (`scaler_params.json`, `feature_cols.json`, `ohe_cols.json`) to be present in `data/raw/processed/`. Model weights (`lr_weights.pkl`, `nn_weights.pkl`) in `models/` are optional — the app shows placeholder cards until they are available.
+
+To extract G-code features from a folder of `.gcode.3mf` files and write `real_prints_features.csv`:
+
+```bash
+python -m src.parse_3mf --input_dir ./3mf_files --output real_prints_features.csv
+```
+
 ## Large dataset setup (no Git LFS)
 
 `data/raw/makerlab_dataset_5000_rows.csv` is intentionally not tracked in git because it exceeds GitHub's 100MB file limit.
@@ -56,7 +72,7 @@ This project is split across 6 owners over 4 weeks, with two independent tracks 
 
 - Jully Li (EDA lead): compare 100/1000/5000-row synthetic datasets, identify zero-variance columns, review class balance, generate EDA plots, and hand off cleaned feature candidates to Owner B by end of week 1.
 - Owner B (critical path, preprocessing lead): imputation, one-hot encoding, min-max scaling on train split only, stratified 70/15/15 split, and export of `train.npz`, `val.npz`, `test.npz`, `scaler_params.json`, and `feature_cols.json`.
-- Owner C (parser + app shell): extract real-print features from `.gcode.3mf` files into `real_prints_features.csv`, then build Streamlit app skeleton and wire preprocessing artifacts for inference.
+- Weicong (Wendy) Hong (parser + app implementation): extract real-print features from `.gcode.3mf` files into `real_prints_features.csv`, build full-stack Streamlit app (implement UI features, wire preprocessing artifacts for inference, and integrate model weights into Streamlit).
 - Owner D (labeling lead): define labeling rubric, label timelapse outcomes, produce `labels.csv`, and join with C's features to create `real_eval.csv`.
 - Hannah Liang (logistic regression lead): implement LR from scratch (NumPy), use weighted loss, tune on validation, report metrics on test, and integrate LR weights into Streamlit.
 - Owner F (neural network + final eval lead): implement NN from scratch (NumPy), tune on validation, run final synthetic + real-data evaluation, produce LR-vs-NN comparison outputs, and integrate NN weights into Streamlit.
