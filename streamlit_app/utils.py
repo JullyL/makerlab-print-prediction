@@ -369,36 +369,32 @@ def risk_flag(text: str, kind: str = "warn") -> str:
 
 
 def confusion_matrix_html(tp: int, fp: int, fn: int, tn: int) -> str:
-    return f"""
-    <div class="cm-wrap">
-      <div class="cm-cell cm-tp"><div class="cm-num">{tp}</div><div class="cm-lbl">TP</div></div>
-      <div class="cm-cell cm-fp"><div class="cm-num">{fp}</div><div class="cm-lbl">FP</div></div>
-      <div class="cm-cell cm-fn"><div class="cm-num">{fn}</div><div class="cm-lbl">FN</div></div>
-      <div class="cm-cell cm-tn"><div class="cm-num">{tn}</div><div class="cm-lbl">TN</div></div>
-    </div>
-    """
+    return (
+        f'<div class="cm-wrap">'
+        f'<div class="cm-cell cm-tp"><div class="cm-num">{tp}</div><div class="cm-lbl">TP</div></div>'
+        f'<div class="cm-cell cm-fp"><div class="cm-num">{fp}</div><div class="cm-lbl">FP</div></div>'
+        f'<div class="cm-cell cm-fn"><div class="cm-num">{fn}</div><div class="cm-lbl">FN</div></div>'
+        f'<div class="cm-cell cm-tn"><div class="cm-num">{tn}</div><div class="cm-lbl">TN</div></div>'
+        f'</div>'
+    )
 
 
 def coef_bar_html(label: str, value_pct: int, max_pct: int = 100) -> str:
     bar_width = int(value_pct / max_pct * 100)
-    return f"""
-    <div class="coef-row">
-      <div class="coef-label">{label}</div>
-      <div class="coef-bar-wrap">
-        <div class="coef-bar" style="width:{bar_width}%"></div>
-      </div>
-      <div class="coef-pct">{value_pct}%</div>
-    </div>
-    """
+    return (
+        f'<div class="coef-row">'
+        f'<div class="coef-label">{label}</div>'
+        f'<div class="coef-bar-wrap"><div class="coef-bar" style="width:{bar_width}%"></div></div>'
+        f'<div class="coef-pct">{value_pct}%</div>'
+        f'</div>'
+    )
 
 
 def conf_bar_html(label: str, pct: float, color: str = "#22c55e") -> str:
-    return f"""
-    <div class="conf-row">
-      <div class="conf-label">{label}</div>
-      <div class="conf-bar-wrap">
-        <div class="conf-bar" style="width:{pct:.0f}%;background:{color}"></div>
-      </div>
-      <div class="conf-pct">{pct:.0f}%</div>
-    </div>
-    """
+    return (
+        f'<div class="conf-row">'
+        f'<div class="conf-label">{label}</div>'
+        f'<div class="conf-bar-wrap"><div class="conf-bar" style="width:{pct:.0f}%;background:{color}"></div></div>'
+        f'<div class="conf-pct">{pct:.0f}%</div>'
+        f'</div>'
+    )

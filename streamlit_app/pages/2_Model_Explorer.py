@@ -32,7 +32,7 @@ def _load_pkl(path):
 
 lr_metrics   = _load_json(os.path.join(MODELS_DIR, "lr_metrics.json"))
 nn_metrics   = _load_json(os.path.join(MODELS_DIR, "nn_metrics.json"))
-lr_weights   = _load_pkl(os.path.join(MODELS_DIR, "lr_weights.pkl"))
+lr_weights   = _load_pkl(os.path.join(PROC_DIR, "lr_weights.pkl"))
 feature_cols = _load_json(os.path.join(PROC_DIR, "feature_cols.json")) or []
 
 with st.sidebar:
@@ -94,7 +94,7 @@ st.markdown(
 
 if model_view == "Logistic Regression":
     if active_weights is not None and feature_cols:
-        w = np.array(active_weights.get("w", []))
+        w = np.array(active_weights.get("weights", []))
         if len(w) == len(feature_cols):
             abs_w   = np.abs(w)
             max_abs = abs_w.max() if abs_w.max() > 0 else 1

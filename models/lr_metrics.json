@@ -1,0 +1,124 @@
+{
+  "accuracy": 0.8067,
+  "precision": 0.819,
+  "recall": 0.8958,
+  "f1": 0.8557,
+  "roc_auc": 0.8825,
+  "threshold": 0.5,
+  "confusion_matrix": [
+    [
+      35,
+      19
+    ],
+    [
+      10,
+      86
+    ]
+  ],
+  "top_features": [
+    {
+      "name": "layer_height",
+      "weight": 0.185116,
+      "pct": 100
+    },
+    {
+      "name": "filament_type_TPU",
+      "weight": 0.138984,
+      "pct": 75
+    },
+    {
+      "name": "filament_type_PLA",
+      "weight": -0.077329,
+      "pct": 41
+    },
+    {
+      "name": "filament_type_PETG",
+      "weight": -0.069866,
+      "pct": 37
+    },
+    {
+      "name": "filament_type_PC",
+      "weight": -0.049958,
+      "pct": 26
+    },
+    {
+      "name": "filament_type_ABS",
+      "weight": 0.043753,
+      "pct": 23
+    },
+    {
+      "name": "fan_max_speed",
+      "weight": 0.032991,
+      "pct": 17
+    },
+    {
+      "name": "nozzle_temperature_initial_layer",
+      "weight": -0.022092,
+      "pct": 11
+    },
+    {
+      "name": "retraction_length",
+      "weight": -0.013429,
+      "pct": 7
+    },
+    {
+      "name": "bridge_speed",
+      "weight": -0.007856,
+      "pct": 4
+    },
+    {
+      "name": "nozzle_temperature",
+      "weight": -0.00696,
+      "pct": 3
+    },
+    {
+      "name": "inner_wall_speed",
+      "weight": -0.004236,
+      "pct": 2
+    },
+    {
+      "name": "sparse_infill_density",
+      "weight": -0.003135,
+      "pct": 1
+    },
+    {
+      "name": "outer_wall_speed",
+      "weight": -0.000374,
+      "pct": 0
+    },
+    {
+      "name": "top_shell_layers",
+      "weight": 0.0,
+      "pct": 0
+    },
+    {
+      "name": "wall_loops",
+      "weight": 0.0,
+      "pct": 0
+    },
+    {
+      "name": "initial_layer_print_height",
+      "weight": 0.0,
+      "pct": 0
+    },
+    {
+      "name": "retraction_speed",
+      "weight": 0.0,
+      "pct": 0
+    },
+    {
+      "name": "enable_support",
+      "weight": 0.0,
+      "pct": 0
+    },
+    {
+      "name": "bottom_shell_layers",
+      "weight": 0.0,
+      "pct": 0
+    }
+  ],
+  "model": "LogisticRegression",
+  "train_size": 700,
+  "val_size": 150,
+  "test_size": 150
+}

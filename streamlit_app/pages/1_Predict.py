@@ -37,8 +37,8 @@ def load_model(path):
 
 
 def lr_sigmoid(weights, x):
-    w = np.array(weights["w"])
-    b = float(weights["b"])
+    w = np.array(weights["weights"])
+    b = float(weights["bias"])
     return float(1 / (1 + np.exp(-(x @ w + b))))
 
 
@@ -88,19 +88,21 @@ def compute_risk_flags(material, speed, temp, cooling, layer_h):
 with st.sidebar:
     section_label("Print Settings")
 
-    material     = st.selectbox("Material",     options=["PLA", "PETG", "ABS", "TPU", "PC"], index=0)
-    printer_type = st.selectbox("Printer Type", options=["Bambu X1C", "Bambu P1S", "Bambu A1", "Other FDM"], index=0)
-    speed  = st.slider("Print speed (mm/s)", 10, 500, 75, 5)
-    temp   = st.slider("Temperature (°C)",  150, 320, 210, 5)
-    fan    = st.slider("Cooling fan%",        0, 100,   80, 5)
-    layer  = st.slider("Layer height (mm)", 0.05, 0.40, 0.20, 0.01, format="%.2f")
+    material     = st.selectbox("Material",     options=["PLA", "PETG", "ABS", "TPU", "PC"],               key="ps_material")
+    printer_type = st.selectbox("Printer Type", options=["Bambu X1C", "Bambu P1S", "Bambu A1", "Other FDM"], key="ps_printer")
+    speed  = st.slider("Print speed (mm/s)", 10,   500,  75,   5,    key="ps_speed")
+    temp   = st.slider("Temperature (°C)",  150,   320,  210,  5,    key="ps_temp")
+    fan    = st.slider("Cooling fan%",        0,   100,   80,  5,    key="ps_fan")
+    layer  = st.slider("Layer height (mm)", 0.05, 0.40,  0.20, 0.01, key="ps_layer", format="%.2f")
 
     st.markdown("<div style='margin-top:12px'></div>", unsafe_allow_html=True)
     predict_btn = st.button("Predict ↗", type="primary")
 
     if st.button("Reset defaults", type="secondary"):
-        st.session_state.pop("gcode_features", None)
-        st.session_state.pop("uploaded_name", None)
+        clear_keys = ("gcode_features", "uploaded_name", "lr_prob", "nn_prob", "X", "raw_input",
+                      "ps_material", "ps_printer", "ps_speed", "ps_temp", "ps_fan", "ps_layer")
+        for key in clear_keys:
+            st.session_state.pop(key, None)
         st.rerun()
 
 
@@ -110,7 +112,7 @@ except FileNotFoundError as e:
     st.error(f"Preprocessing artifacts missing: {e}")
     st.stop()
 
-lr_weights = load_model(os.path.join(MODELS_DIR, "lr_weights.pkl"))
+lr_weights = load_model(os.path.join(PROCESSED_DIR, "lr_weights.pkl"))
 nn_weights = load_model(os.path.join(MODELS_DIR, "nn_weights.pkl"))
 
 uploaded = st.file_uploader(
@@ -208,24 +210,28 @@ raw_input = {
 
 lr_prob = nn_prob = None
 
-if predict_btn or "uploaded_name" in st.session_state:
-    try:
-        X = preprocess_single(raw_input, feature_cols, scaler, ohe_map)
-        if lr_weights is not None:
-            lr_prob = lr_sigmoid(lr_weights, X[0]) * 100
-        if nn_weights is not None:
-            nn_prob = nn_forward(nn_weights, X[0:1]) * 100
-        st.session_state["lr_prob"]   = lr_prob
-        st.session_state["nn_prob"]   = nn_prob
-        st.session_state["raw_input"] = raw_input
-        st.session_state["X"]         = X
-    except Exception as exc:
-        st.warning(f"Preprocessing issue: {exc}")
+if predict_btn:
+    if "uploaded_name" not in st.session_state:
+        st.warning("Please upload a .gcode or .gcode.3mf file before running prediction.")
+    else:
+        try:
+            X = preprocess_single(raw_input, feature_cols, scaler, ohe_map)
+            if lr_weights is not None:
+                lr_prob = lr_sigmoid(lr_weights, X[0]) * 100
+            if nn_weights is not None:
+                nn_prob = nn_forward(nn_weights, X[0:1]) * 100
+            st.session_state["lr_prob"]   = lr_prob
+            st.session_state["nn_prob"]   = nn_prob
+            st.session_state["raw_input"] = raw_input
+            st.session_state["X"]         = X
+        except Exception as exc:
+            st.warning(f"Preprocessing issue: {exc}")
 
-if lr_prob is None:
-    lr_prob = st.session_state.get("lr_prob")
-if nn_prob is None:
-    nn_prob = st.session_state.get("nn_prob")
+if "uploaded_name" in st.session_state:
+    if lr_prob is None:
+        lr_prob = st.session_state.get("lr_prob")
+    if nn_prob is None:
+        nn_prob = st.session_state.get("nn_prob")
 
 tab_results, tab_sug, tab_fs = st.tabs(["Results", "Suggestions", "File summary"])
 
@@ -233,39 +239,28 @@ with tab_results:
     models_ready = lr_prob is not None or nn_prob is not None
 
     if not models_ready:
+        file_loaded = "uploaded_name" in st.session_state
+        score_hint  = "Click Predict ↗ to run" if file_loaded else "Upload a file, then click Predict ↗"
+        conf_hint   = "Click Predict ↗ in the sidebar to run the model." if file_loaded else "Upload a .gcode or .gcode.3mf file and click Predict ↗."
+
         col_score, col_conf = st.columns([1, 1.4])
         with col_score:
             st.markdown(
-                """
-                <div class="card" style="text-align:center;padding:28px 20px;">
+                f"""<div class="card" style="text-align:center;padding:28px 20px;">
                   <div style="font-size:0.8rem;color:#9ca3af;margin-bottom:8px;">Success score</div>
                   <div class="score-value" style="color:#d1d5db;">—</div>
                   <div style="margin-top:10px;">
-                    <span style="background:#f3f4f6;color:#9ca3af;border-radius:20px;padding:3px 12px;font-size:0.82rem;">
-                      Awaiting model weights
-                    </span>
+                    <span style="background:#f3f4f6;color:#9ca3af;border-radius:20px;padding:3px 12px;font-size:0.82rem;">{score_hint}</span>
                   </div>
-                </div>
-                """,
+                </div>""",
                 unsafe_allow_html=True,
             )
         with col_conf:
             st.markdown(
-                """
-                <div class="card" style="padding:28px 20px;">
-                  <div style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:16px;">
-                    Confidence breakdown
-                  </div>
-                  <div style="color:#9ca3af;font-size:0.88rem;">
-                    ⌛ Neural Network — <em>weights not loaded yet</em><br>
-                    ⌛ Logistic Reg. &nbsp; — <em>weights not loaded yet</em>
-                  </div>
-                  <div style="font-size:0.75rem;color:#d1d5db;margin-top:14px;">
-                    Place <code>models/lr_weights.pkl</code> and <code>models/nn_weights.pkl</code>
-                    to activate predictions.
-                  </div>
-                </div>
-                """,
+                f"""<div class="card" style="padding:28px 20px;">
+                  <div style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:16px;">Confidence breakdown</div>
+                  <div style="color:#9ca3af;font-size:0.88rem;">{conf_hint}</div>
+                </div>""",
                 unsafe_allow_html=True,
             )
     else:
@@ -286,13 +281,11 @@ with tab_results:
         col_score, col_conf = st.columns([1, 1.4])
         with col_score:
             st.markdown(
-                f"""
-                <div class="card" style="text-align:center;padding:28px 20px;">
-                  <div style="font-size:0.8rem;color:#9ca3af;margin-bottom:8px;">Success score</div>
-                  <div class="score-value" style="color:{color};">{success:.0f}%</div>
-                  <div style="margin-top:10px;">{badge}</div>
-                </div>
-                """,
+                f'<div class="card" style="text-align:center;padding:28px 20px;">'
+                f'<div style="font-size:0.8rem;color:#9ca3af;margin-bottom:8px;">Success score</div>'
+                f'<div class="score-value" style="color:{color};">{success:.0f}%</div>'
+                f'<div style="margin-top:10px;">{badge}</div>'
+                f'</div>',
                 unsafe_allow_html=True,
             )
         with col_conf:
@@ -302,14 +295,10 @@ with tab_results:
             if lr_prob is not None:
                 bars += conf_bar_html("Logistic Reg.", 100 - lr_prob, "#f59e0b")
             st.markdown(
-                f"""
-                <div class="card" style="padding:28px 20px;">
-                  <div style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:16px;">
-                    Confidence breakdown
-                  </div>
-                  {bars}
-                </div>
-                """,
+                f'<div class="card" style="padding:28px 20px;">'
+                f'<div style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:16px;">Confidence breakdown</div>'
+                f'{bars}'
+                f'</div>',
                 unsafe_allow_html=True,
             )
 
