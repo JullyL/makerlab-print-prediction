@@ -1,62 +1,73 @@
 {
-  "nozzle_temperature": {
-    "min": 180.0,
-    "max": 300.0
+  "numeric_cols": [
+    "nozzle_temperature",
+    "nozzle_temperature_initial_layer",
+    "layer_height",
+    "initial_layer_print_height",
+    "inner_wall_speed",
+    "outer_wall_speed",
+    "bridge_speed",
+    "fan_max_speed",
+    "sparse_infill_density",
+    "bottom_shell_layers",
+    "top_shell_layers",
+    "wall_loops",
+    "retraction_length",
+    "retraction_speed",
+    "enable_support"
+  ],
+  "min": {
+    "nozzle_temperature": 180.0,
+    "nozzle_temperature_initial_layer": 220.0,
+    "layer_height": 0.08,
+    "initial_layer_print_height": 0.2,
+    "inner_wall_speed": 20.0,
+    "outer_wall_speed": 20.0,
+    "bridge_speed": 10.0,
+    "fan_max_speed": 1.2,
+    "sparse_infill_density": 0.0,
+    "bottom_shell_layers": 3.0,
+    "top_shell_layers": 5.0,
+    "wall_loops": 2.0,
+    "retraction_length": 0.0,
+    "retraction_speed": 30.0,
+    "enable_support": 0.0
   },
-  "nozzle_temperature_initial_layer": {
-    "min": 220.0,
-    "max": 270.0
+  "max": {
+    "nozzle_temperature": 300.0,
+    "nozzle_temperature_initial_layer": 270.0,
+    "layer_height": 0.4,
+    "initial_layer_print_height": 0.2,
+    "inner_wall_speed": 500.0,
+    "outer_wall_speed": 461.84,
+    "bridge_speed": 101.34,
+    "fan_max_speed": 100.0,
+    "sparse_infill_density": 41.36,
+    "bottom_shell_layers": 3.0,
+    "top_shell_layers": 5.0,
+    "wall_loops": 2.0,
+    "retraction_length": 3.6,
+    "retraction_speed": 30.0,
+    "enable_support": 0.0
   },
-  "layer_height": {
-    "min": 0.08,
-    "max": 0.4
+  "median_impute": {
+    "nozzle_temperature": 252.38,
+    "nozzle_temperature_initial_layer": 245.0,
+    "layer_height": 0.18,
+    "initial_layer_print_height": 0.2,
+    "inner_wall_speed": 299.29499999999996,
+    "outer_wall_speed": 200.28,
+    "bridge_speed": 49.754999999999995,
+    "fan_max_speed": 58.4,
+    "sparse_infill_density": 14.855,
+    "bottom_shell_layers": 3.0,
+    "top_shell_layers": 5.0,
+    "wall_loops": 2.0,
+    "retraction_length": 0.765,
+    "retraction_speed": 30.0,
+    "enable_support": 0.0
   },
-  "initial_layer_print_height": {
-    "min": 0.2,
-    "max": 0.2
-  },
-  "inner_wall_speed": {
-    "min": 20.0,
-    "max": 500.0
-  },
-  "outer_wall_speed": {
-    "min": 20.0,
-    "max": 461.84
-  },
-  "bridge_speed": {
-    "min": 10.0,
-    "max": 101.34
-  },
-  "fan_max_speed": {
-    "min": 1.2,
-    "max": 100.0
-  },
-  "sparse_infill_density": {
-    "min": 0.0,
-    "max": 41.36
-  },
-  "bottom_shell_layers": {
-    "min": 3.0,
-    "max": 3.0
-  },
-  "top_shell_layers": {
-    "min": 5.0,
-    "max": 5.0
-  },
-  "wall_loops": {
-    "min": 2.0,
-    "max": 2.0
-  },
-  "retraction_length": {
-    "min": 0.0,
-    "max": 3.6
-  },
-  "retraction_speed": {
-    "min": 30.0,
-    "max": 30.0
-  },
-  "enable_support": {
-    "min": 0.0,
-    "max": 0.0
+  "mode_impute": {
+    "filament_type": "PETG"
   }
 }
