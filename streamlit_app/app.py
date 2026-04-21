@@ -23,11 +23,10 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-_here = os.path.dirname(__file__)
 pg = st.navigation([
-    st.Page(os.path.join(_here, "pages", "home.py"),             title="Home",           icon="🏠"),
-    st.Page(os.path.join(_here, "pages", "1_Predict.py"),        title="Predict",        icon="🎯"),
-    st.Page(os.path.join(_here, "pages", "2_Model_Explorer.py"), title="Model Explorer", icon="📊"),
-    st.Page(os.path.join(_here, "pages", "3_About.py"),          title="About",          icon="ℹ️"),
+    st.Page("pages/home.py",             title="Home",           icon="🏠"),
+    st.Page("pages/1_Predict.py",        title="Predict",        icon="🎯"),
+    st.Page("pages/2_Model_Explorer.py", title="Model Explorer", icon="📊"),
+    st.Page("pages/3_About.py",          title="About",          icon="ℹ️"),
 ])
 pg.run()

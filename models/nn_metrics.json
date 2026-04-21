@@ -1,0 +1,128 @@
+{
+  "accuracy": 0.82,
+  "precision": 0.8286,
+  "recall": 0.9062,
+  "f1": 0.8657,
+  "roc_auc": 0.8771,
+  "threshold": 0.4,
+  "confusion_matrix": [
+    [
+      36,
+      18
+    ],
+    [
+      9,
+      87
+    ]
+  ],
+  "top_features": [
+    {
+      "name": "fan_max_speed",
+      "weight": 0.330698,
+      "pct": 100
+    },
+    {
+      "name": "filament_type_PLA",
+      "weight": 0.298687,
+      "pct": 90
+    },
+    {
+      "name": "top_shell_layers",
+      "weight": 0.285092,
+      "pct": 86
+    },
+    {
+      "name": "filament_type_TPU",
+      "weight": 0.28048,
+      "pct": 85
+    },
+    {
+      "name": "filament_type_ABS",
+      "weight": 0.277259,
+      "pct": 84
+    },
+    {
+      "name": "inner_wall_speed",
+      "weight": 0.269643,
+      "pct": 82
+    },
+    {
+      "name": "filament_type_PC",
+      "weight": 0.260327,
+      "pct": 79
+    },
+    {
+      "name": "enable_support",
+      "weight": 0.258846,
+      "pct": 78
+    },
+    {
+      "name": "outer_wall_speed",
+      "weight": 0.257259,
+      "pct": 78
+    },
+    {
+      "name": "retraction_speed",
+      "weight": 0.252041,
+      "pct": 76
+    },
+    {
+      "name": "wall_loops",
+      "weight": 0.251774,
+      "pct": 76
+    },
+    {
+      "name": "bottom_shell_layers",
+      "weight": 0.250783,
+      "pct": 76
+    },
+    {
+      "name": "retraction_length",
+      "weight": 0.23308,
+      "pct": 70
+    },
+    {
+      "name": "initial_layer_print_height",
+      "weight": 0.231516,
+      "pct": 70
+    },
+    {
+      "name": "bridge_speed",
+      "weight": 0.211196,
+      "pct": 64
+    },
+    {
+      "name": "nozzle_temperature",
+      "weight": 0.208263,
+      "pct": 63
+    },
+    {
+      "name": "layer_height",
+      "weight": 0.20183,
+      "pct": 61
+    },
+    {
+      "name": "nozzle_temperature_initial_layer",
+      "weight": 0.196133,
+      "pct": 59
+    },
+    {
+      "name": "filament_type_PETG",
+      "weight": 0.195593,
+      "pct": 59
+    },
+    {
+      "name": "sparse_infill_density",
+      "weight": 0.193183,
+      "pct": 58
+    }
+  ],
+  "model": "NeuralNetwork",
+  "hidden_layers": [
+    32,
+    16
+  ],
+  "train_size": 700,
+  "val_size": 150,
+  "test_size": 150
+}
