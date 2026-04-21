@@ -33,6 +33,7 @@ def _load_pkl(path):
 lr_metrics   = _load_json(os.path.join(MODELS_DIR, "lr_metrics.json"))
 nn_metrics   = _load_json(os.path.join(MODELS_DIR, "nn_metrics.json"))
 lr_weights   = _load_pkl(os.path.join(PROC_DIR, "lr_weights.pkl"))
+nn_weights   = _load_pkl(os.path.join(MODELS_DIR, "nn_weights.pkl"))
 feature_cols = _load_json(os.path.join(PROC_DIR, "feature_cols.json")) or []
 
 with st.sidebar:
@@ -44,7 +45,7 @@ with st.sidebar:
     )
 
 active         = lr_metrics if model_view == "Logistic Regression" else nn_metrics
-active_weights = lr_weights  if model_view == "Logistic Regression" else None
+active_weights = lr_weights if model_view == "Logistic Regression" else nn_weights
 
 accuracy = active.get("accuracy") if active else None
 f1       = active.get("f1")       if active else None
@@ -116,12 +117,33 @@ if model_view == "Logistic Regression":
             unsafe_allow_html=True,
         )
 else:
-    st.markdown(
-        "<p style='color:#9ca3af;font-size:0.88rem;'>"
-        "Feature importance for neural networks is not directly interpretable via coefficients.<br>"
-        "Use SHAP or gradient-based attribution.</p>",
-        unsafe_allow_html=True,
-    )
+    if nn_metrics and "top_features" in nn_metrics:
+        bars = "".join(coef_bar_html(f["name"], f["pct"]) for f in nn_metrics["top_features"][:8])
+        st.markdown(bars, unsafe_allow_html=True)
+        st.markdown(
+            "<p style='font-size:0.75rem;color:#9ca3af;margin-top:8px;'>"
+            "Ranked by mean absolute first-layer weight; this is a lightweight importance proxy.</p>",
+            unsafe_allow_html=True,
+        )
+    elif active_weights is not None and feature_cols and "W1" in active_weights:
+        w1 = np.array(active_weights["W1"])
+        if w1.shape[0] == len(feature_cols):
+            importance = np.mean(np.abs(w1), axis=1)
+            max_abs = importance.max() if importance.max() > 0 else 1
+            pcts = (importance / max_abs * 100).astype(int)
+            order = np.argsort(pcts)[::-1][:8]
+            bars = "".join(coef_bar_html(feature_cols[i], int(pcts[i])) for i in order)
+            st.markdown(bars, unsafe_allow_html=True)
+        else:
+            st.warning("First-layer weight shape doesn't match feature_cols. Check nn_weights.pkl.")
+    else:
+        st.markdown(
+            "<p style='color:#9ca3af;font-size:0.88rem;'>"
+            "Feature importance for the neural network is not available yet. "
+            "Run the neural network notebook to create <code>models/nn_weights.pkl</code> and "
+            "<code>models/nn_metrics.json</code>.</p>",
+            unsafe_allow_html=True,
+        )
 
 st.markdown("</div>", unsafe_allow_html=True)
 

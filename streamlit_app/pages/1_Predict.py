@@ -39,7 +39,8 @@ def load_model(path):
 def lr_sigmoid(weights, x):
     w = np.array(weights["weights"])
     b = float(weights["bias"])
-    return float(1 / (1 + np.exp(-(x @ w + b))))
+    z = np.clip(x @ w + b, -500, 500)
+    return float(1 / (1 + np.exp(-z)))
 
 
 def nn_forward(weights, x):
@@ -51,7 +52,8 @@ def nn_forward(weights, x):
         a = np.maximum(0, a @ W + b)
     W_out = np.array(weights["W_out"])
     b_out = np.array(weights["b_out"])
-    return float(1 / (1 + np.exp(-(a @ W_out + b_out))))
+    z = np.clip(a @ W_out + b_out, -500, 500)
+    return float((1 / (1 + np.exp(-z))).ravel()[0])
 
 
 def compute_risk_flags(material, speed, temp, cooling, layer_h):
