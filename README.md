@@ -71,11 +71,11 @@ bash scripts/setup_data.sh "/Users/jullyli/Downloads/ChallengeData"
 This project is split across 6 owners over 4 weeks, with two independent tracks converging at model training.
 
 - Jully Li (EDA lead): compare 100/1000/5000-row synthetic datasets, identify zero-variance columns, review class balance, generate EDA plots, and hand off cleaned feature candidates to Owner B by end of week 1.
-- Owner B (critical path, preprocessing lead): imputation, one-hot encoding, min-max scaling on train split only, stratified 70/15/15 split, and export of `train.npz`, `val.npz`, `test.npz`, `scaler_params.json`, and `feature_cols.json`.
+- Sophie Su (critical path, preprocessing lead): imputation, one-hot encoding, min-max scaling on train split only, stratified 70/15/15 split, and export of `train.npz`, `val.npz`, `test.npz`, `scaler_params.json`, and `feature_cols.json`.
 - Weicong (Wendy) Hong (parser + app implementation): extract real-print features from `.gcode.3mf` files into `real_prints_features.csv`, build full-stack Streamlit app (implement UI features, wire preprocessing artifacts for inference, and integrate model weights into Streamlit).
-- Owner D (labeling lead): define labeling rubric, label timelapse outcomes, produce `labels.csv`, and join with C's features to create `real_eval.csv`.
+- Bryant Jiang (labeling lead): define labeling rubric, label timelapse outcomes, produce `labels.csv`, and join with C's features to create `real_eval.csv`.
 - Hannah Liang (logistic regression lead): implement LR from scratch (NumPy), use weighted loss, tune on validation, report metrics on test, and integrate LR weights into Streamlit.
-- Owner F (neural network + final eval lead): implement NN from scratch (NumPy), tune on validation, run final synthetic + real-data evaluation, produce LR-vs-NN comparison outputs, and integrate NN weights into Streamlit.
+- Carina Hu (neural network + final eval lead): implement NN from scratch (NumPy), tune on validation, run final synthetic + real-data evaluation, produce LR-vs-NN comparison outputs, and integrate NN weights into Streamlit.
 
 ### Key dependencies and rules
 
