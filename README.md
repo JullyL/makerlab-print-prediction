@@ -54,44 +54,52 @@ python -m src.parse_3mf --input_dir ./3mf_files --output real_prints_features.cs
 
 `data/raw/makerlab_dataset_5000_rows.csv` is intentionally not tracked in git because it exceeds GitHub's 100MB file limit.
 
-To set it up locally:
+**Download the file from Google Drive:**
+[https://drive.google.com/file/d/1g7kyCBtcptaYtGbFlp8K6YvXFuS9-7Ph/view](https://drive.google.com/file/d/1g7kyCBtcptaYtGbFlp8K6YvXFuS9-7Ph/view)
+
+**Setup steps:**
+
+1. Open the link above and click **Download** (top-right menu or the download icon).
+2. Move the downloaded file into the `data/raw/` directory of this repo and confirm it is named exactly `makerlab_dataset_5000_rows.csv`:
 
 ```bash
-bash scripts/setup_data.sh /path/to/ChallengeData
+mv ~/Downloads/makerlab_dataset_5000_rows.csv data/raw/makerlab_dataset_5000_rows.csv
 ```
 
-Example on macOS:
+3. Verify the file is in place:
 
 ```bash
-bash scripts/setup_data.sh "/Users/jullyli/Downloads/ChallengeData"
+ls data/raw/makerlab_dataset_5000_rows.csv
 ```
+
+The notebooks and preprocessing scripts expect the file at that exact path.
 
 ## Group task assignment (revised)
 
-This project is split across 6 owners over 4 weeks, with two independent tracks converging at model training.
+This project is split across 6 members, each owning a distinct area of the pipeline.
 
-- Jully Li (EDA lead): compare 100/1000/5000-row synthetic datasets, identify zero-variance columns, review class balance, generate EDA plots, and hand off cleaned feature candidates to Owner B by end of week 1.
-- Sophie Su (critical path, preprocessing lead): imputation, one-hot encoding, min-max scaling on train split only, stratified 70/15/15 split, and export of `train.npz`, `val.npz`, `test.npz`, `scaler_params.json`, and `feature_cols.json`.
-- Weicong (Wendy) Hong (parser + app implementation): extract real-print features from `.gcode.3mf` files into `real_prints_features.csv`, build full-stack Streamlit app (implement UI features, wire preprocessing artifacts for inference, and integrate model weights into Streamlit).
-- Bryant Jiang (labeling lead): define labeling rubric, label timelapse outcomes, produce `labels.csv`, and join with C's features to create `real_eval.csv`.
-- Hannah Liang (logistic regression lead): implement LR from scratch (NumPy), use weighted loss, tune on validation, report metrics on test, and integrate LR weights into Streamlit.
-- Carina Hu (neural network + final eval lead): implement NN from scratch (NumPy), tune on validation, run final synthetic + real-data evaluation, produce LR-vs-NN comparison outputs, and integrate NN weights into Streamlit.
+- **Jully Li** owns exploratory data analysis: comparing synthetic datasets at different scales, identifying data quality issues, reviewing class balance, and producing the EDA plots and feature candidates that inform preprocessing decisions.
+- **Sophie Su** owns data preprocessing: cleaning, imputation, one-hot encoding, min-max scaling (fit on train only), stratified 70/15/15 splitting, and exporting all shared artifacts (`train.npz`, `val.npz`, `test.npz`, `scaler_params.json`, `feature_cols.json`).
+- **Weicong (Wendy) Hong** owns the parser and Streamlit app: extracting real-print features from `.gcode.3mf` files, building the full-stack UI, and wiring preprocessing artifacts and model weights into the inference flow.
+- **Bryant Jiang** owns real-print labeling: defining the labeling rubric, annotating timelapse outcomes, and producing `real_eval.csv` by joining extracted features with ground-truth labels.
+- **Hannah Liang** owns the logistic regression model: implementing LR from scratch in NumPy, applying class weighting, tuning on validation, and reporting final test metrics.
+- **Carina Hu** owns the neural network and final evaluation: implementing the NN from scratch in NumPy, tuning on validation, running the LR-vs-NN comparison on both synthetic and real data, and producing the final evaluation outputs.
 
 ### Key dependencies and rules
 
-- B must deliver preprocessing artifacts before E/F run final training and reporting.
+- Sophie must deliver preprocessing artifacts before Hannah and Carina run final training and reporting.
 - Tune only on `val.npz`; do not touch `test.npz` until hyperparameters are finalized.
 - `scaler_params.json` and `feature_cols.json` are shared interfaces and must stay consistent between training and inference.
 - `real_eval.csv` is for transfer evaluation only (not training).
-- E and F should use the same class-weighting scheme for fair comparison.
+- Hannah and Carina should use the same class-weighting scheme for fair comparison.
 
 ### Shared interface files
 
-- `train.npz`, `val.npz`, `test.npz` (B -> E/F)
-- `scaler_params.json`, `feature_cols.json` (B -> C/E/F)
-- `ohe_cols.json` (B -> C)
-- `real_prints_features.csv` (C -> D/F)
-- `labels.csv` (D -> D join step)
-- `real_eval.csv` (D -> F)
-- `lr_weights.pkl` (E -> C)
-- `nn_weights.pkl` (F -> C)
+- `train.npz`, `val.npz`, `test.npz` (Sophie -> Hannah / Carina)
+- `scaler_params.json`, `feature_cols.json` (Sophie -> Wendy / Hannah / Carina)
+- `ohe_cols.json` (Sophie -> Wendy)
+- `real_prints_features.csv` (Wendy -> Bryant / Carina)
+- `labels.csv` (Bryant -> Bryant join step)
+- `real_eval.csv` (Bryant -> Carina)
+- `lr_weights.pkl` (Hannah -> Wendy)
+- `nn_weights.pkl` (Carina -> Wendy)
