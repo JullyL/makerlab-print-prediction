@@ -95,7 +95,7 @@ ls data/raw/makerlab_dataset_5000_rows.csv
 
 The notebooks and preprocessing scripts expect the file at that exact path.
 
-## Group task assignment (revised)
+## Group task responsibility
 
 This project is split across 6 members, each owning a distinct area of the pipeline.
 
