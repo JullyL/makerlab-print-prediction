@@ -36,15 +36,36 @@ jupyter notebook notebooks/01_eda.ipynb
 
 ## Running the Streamlit app
 
-Make sure dependencies are installed (see Getting started above), then run from the repo root:
+Make sure dependencies are installed (see **Getting started** above), then run from the repo root:
 
 ```bash
 streamlit run streamlit_app/app.py
 ```
 
-The app will open at `http://localhost:8501` by default. It expects the preprocessing artifacts (`scaler_params.json`, `feature_cols.json`, `ohe_cols.json`) to be present in `data/raw/processed/`. Model weights (`lr_weights.pkl`, `nn_weights.pkl`) in `models/` are optional — the app shows placeholder cards until they are available.
+The app opens at `http://localhost:8501`. It requires the preprocessing artifacts in `data/raw/processed/` (`scaler_params.json`, `feature_cols.json`, `ohe_cols.json`) and the trained model weights in `models/` (`lr_weights.pkl`, `nn_weights.pkl`).
 
-To extract G-code features from a folder of `.gcode.3mf` files and write `real_prints_features.csv`:
+### Quick-start with the example file
+
+An example print file is included so you can try the full prediction flow immediately without needing your own G-code:
+
+```
+examples/knob.gcode.3mf   ← 1.3 MB Bambu Studio export of a parametric knob
+```
+
+**Step-by-step walkthrough:**
+
+1. Start the app with `streamlit run streamlit_app/app.py`.
+2. Click **Predict** in the left sidebar.
+3. Drag **`examples/knob.gcode.3mf`** onto the upload zone (or click **Browse files** and select it). The app extracts G-code geometry features automatically.
+4. Adjust the print settings in the sidebar (Material, speed, temperature, fan, layer height) to match your intended slicer configuration — or leave the defaults (PLA, 75 mm/s, 210 °C, 80 % fan, 0.20 mm layer).
+5. Click the **Predict ↗** button (it activates once a file is loaded). Both the Logistic Regression and Neural Network models run instantly.
+6. Review the **Results** tab for the ensemble success score and per-model confidence breakdown, then check the **Suggestions** and **File summary** tabs.
+7. Navigate to **Model Explorer** to see a detailed breakdown of each model's performance metrics, feature importance, and confusion matrix for your prediction run.
+8. To start a new analysis, click **✕ Clear** next to the file banner or **Reset defaults** in the sidebar.
+
+### Batch G-code feature extraction
+
+To extract features from a folder of `.gcode.3mf` files and write a CSV:
 
 ```bash
 python -m src.parse_3mf --input_dir ./3mf_files --output real_prints_features.csv
@@ -84,14 +105,6 @@ This project is split across 6 members, each owning a distinct area of the pipel
 - **Bryant Jiang** owns real-print labeling: defining the labeling rubric, annotating timelapse outcomes, and producing `real_eval.csv` by joining extracted features with ground-truth labels.
 - **Hannah Liang** owns the logistic regression model: implementing LR from scratch in NumPy, applying class weighting, tuning on validation, and reporting final test metrics.
 - **Carina Hu** owns the neural network and final evaluation: implementing the NN from scratch in NumPy, tuning on validation, running the LR-vs-NN comparison on both synthetic and real data, and producing the final evaluation outputs.
-
-### Key dependencies and rules
-
-- Sophie must deliver preprocessing artifacts before Hannah and Carina run final training and reporting.
-- Tune only on `val.npz`; do not touch `test.npz` until hyperparameters are finalized.
-- `scaler_params.json` and `feature_cols.json` are shared interfaces and must stay consistent between training and inference.
-- `real_eval.csv` is for transfer evaluation only (not training).
-- Hannah and Carina should use the same class-weighting scheme for fair comparison.
 
 ### Shared interface files
 
