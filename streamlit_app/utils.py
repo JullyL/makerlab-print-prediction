@@ -295,6 +295,29 @@ button[data-baseweb="tab"] {{
     font-size: 0.9rem !important;
 }}
 
+[data-testid="stFileUploader"] > section {{
+    border: 2px dashed {BLUE} !important;
+    border-radius: 12px !important;
+    background: #eff6ff !important;
+    padding: 28px 20px !important;
+    transition: border-color 0.2s, background 0.2s;
+}}
+[data-testid="stFileUploader"] > section:hover {{
+    border-color: #1d4ed8 !important;
+    background: #dbeafe !important;
+}}
+[data-testid="stFileUploader"] > section svg {{
+    color: {BLUE} !important;
+    fill: {BLUE} !important;
+}}
+[data-testid="stFileUploader"] > section > div > span:first-child {{
+    color: #1e3a5f !important;
+    font-weight: 600 !important;
+}}
+[data-testid="stFileUploader"] > section > div > span:last-child {{
+    color: #4b7cbf !important;
+}}
+
 .page-title {{
     font-size: 1.4rem;
     font-weight: 700;
@@ -331,7 +354,14 @@ div[data-testid="stButton"] > button[kind="primary"] {{
     border-color: {BLUE} !important;
     border-radius: 8px !important;
     font-weight: 600 !important;
-    width: 100% !important;
+    font-size: 1rem !important;
+    padding: 0.55rem 1.5rem !important;
+}}
+div[data-testid="stButton"] > button[kind="primary"]:disabled {{
+    background-color: #e5e7eb !important;
+    border-color: #e5e7eb !important;
+    color: #9ca3af !important;
+    cursor: not-allowed !important;
 }}
 </style>
 """

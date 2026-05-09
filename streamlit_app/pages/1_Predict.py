@@ -98,7 +98,6 @@ with st.sidebar:
     layer  = st.slider("Layer height (mm)", 0.05, 0.40,  0.20, 0.01, key="ps_layer", format="%.2f")
 
     st.markdown("<div style='margin-top:12px'></div>", unsafe_allow_html=True)
-    predict_btn = st.button("Predict ↗", type="primary")
 
     if st.button("Reset defaults", type="secondary"):
         clear_keys = ("gcode_features", "uploaded_name", "lr_prob", "nn_prob", "X", "raw_input",
@@ -133,7 +132,14 @@ if uploaded is not None:
                 st.error(f"Feature extraction failed: {exc}")
 
 if "uploaded_name" in st.session_state:
-    file_banner(st.session_state["uploaded_name"])
+    col_banner, col_clear = st.columns([6, 1])
+    with col_banner:
+        file_banner(st.session_state["uploaded_name"])
+    with col_clear:
+        if st.button("✕ Clear", type="secondary", use_container_width=True):
+            for _k in ("gcode_features", "uploaded_name", "lr_prob", "nn_prob", "X", "raw_input"):
+                st.session_state.pop(_k, None)
+            st.rerun()
     gcode_feat = st.session_state.get("gcode_features", {})
 
     if gcode_feat:
@@ -212,28 +218,46 @@ raw_input = {
 
 lr_prob = nn_prob = None
 
-if predict_btn:
-    if "uploaded_name" not in st.session_state:
-        st.warning("Please upload a .gcode or .gcode.3mf file before running prediction.")
-    else:
-        try:
-            X = preprocess_single(raw_input, feature_cols, scaler, ohe_map)
-            if lr_weights is not None:
-                lr_prob = lr_sigmoid(lr_weights, X[0]) * 100
-            if nn_weights is not None:
-                nn_prob = nn_forward(nn_weights, X[0:1]) * 100
-            st.session_state["lr_prob"]   = lr_prob
-            st.session_state["nn_prob"]   = nn_prob
-            st.session_state["raw_input"] = raw_input
-            st.session_state["X"]         = X
-        except Exception as exc:
-            st.warning(f"Preprocessing issue: {exc}")
+# ── Settings summary + Predict button (main area) ───────────────────────────
+pills = (
+    f'<span style="background:#e0e7ff;color:#3730a3;border-radius:20px;padding:3px 10px;'
+    f'font-size:0.78rem;font-weight:500;margin-right:6px;">{material}</span>'
+    f'<span style="background:#f3f4f6;color:#374151;border-radius:20px;padding:3px 10px;'
+    f'font-size:0.78rem;margin-right:6px;">{speed} mm/s</span>'
+    f'<span style="background:#f3f4f6;color:#374151;border-radius:20px;padding:3px 10px;'
+    f'font-size:0.78rem;margin-right:6px;">{temp}°C</span>'
+    f'<span style="background:#f3f4f6;color:#374151;border-radius:20px;padding:3px 10px;'
+    f'font-size:0.78rem;margin-right:6px;">fan {fan}%</span>'
+    f'<span style="background:#f3f4f6;color:#374151;border-radius:20px;padding:3px 10px;'
+    f'font-size:0.78rem;">{layer:.2f} mm</span>'
+)
+st.markdown(
+    f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
+    f'<span style="font-size:0.72rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;'
+    f'color:#9ca3af;">Settings</span>{pills}</div>',
+    unsafe_allow_html=True,
+)
+predict_btn = st.button("Predict ↗", type="primary", use_container_width=True,
+                        disabled="uploaded_name" not in st.session_state)
 
-if "uploaded_name" in st.session_state:
-    if lr_prob is None:
-        lr_prob = st.session_state.get("lr_prob")
-    if nn_prob is None:
-        nn_prob = st.session_state.get("nn_prob")
+if predict_btn:
+    try:
+        X = preprocess_single(raw_input, feature_cols, scaler, ohe_map)
+        if lr_weights is not None:
+            lr_prob = lr_sigmoid(lr_weights, X[0]) * 100
+        if nn_weights is not None:
+            nn_prob = nn_forward(nn_weights, X[0:1]) * 100
+        st.session_state["lr_prob"]   = lr_prob
+        st.session_state["nn_prob"]   = nn_prob
+        st.session_state["raw_input"] = raw_input
+        st.session_state["X"]         = X
+    except Exception as exc:
+        st.warning(f"Preprocessing issue: {exc}")
+
+if lr_prob is None:
+    lr_prob = st.session_state.get("lr_prob")
+if nn_prob is None:
+    nn_prob = st.session_state.get("nn_prob")
 
 tab_results, tab_sug, tab_fs = st.tabs(["Results", "Suggestions", "File summary"])
 
@@ -242,8 +266,8 @@ with tab_results:
 
     if not models_ready:
         file_loaded = "uploaded_name" in st.session_state
-        score_hint  = "Click Predict ↗ to run" if file_loaded else "Upload a file, then click Predict ↗"
-        conf_hint   = "Click Predict ↗ in the sidebar to run the model." if file_loaded else "Upload a .gcode or .gcode.3mf file and click Predict ↗."
+        score_hint  = "Click Predict ↗ to run"
+        conf_hint   = "Configure your print settings in the sidebar and click <strong>Predict ↗</strong> to run both models."
 
         col_score, col_conf = st.columns([1, 1.4])
         with col_score:
@@ -304,76 +328,85 @@ with tab_results:
                 unsafe_allow_html=True,
             )
 
-    flags      = compute_risk_flags(material, speed, temp, fan, layer)
-    flags_html = "".join(risk_flag(text, kind) for text, kind in flags)
-    st.markdown(
-        f'<div class="risk-section-label">Risk Flags</div>{flags_html}',
-        unsafe_allow_html=True,
-    )
+    if models_ready:
+        flags      = compute_risk_flags(material, speed, temp, fan, layer)
+        flags_html = "".join(risk_flag(text, kind) for text, kind in flags)
+        st.markdown(
+            f'<div class="risk-section-label">Risk Flags</div>{flags_html}',
+            unsafe_allow_html=True,
+        )
 
 with tab_sug:
-    suggested_speed = min(speed, 45) if (material == "PETG" and speed > 45) else speed
-    suggested_temp  = {"PLA": 215, "PETG": 235, "ABS": 250, "TPU": 220, "PC": 275}.get(material, temp)
-    suggested_fan   = fan
-    suggested_layer = layer
-
-    def _sug_row(label, current, suggested, unit=""):
-        changed  = abs(current - suggested) > 0.001
-        val_html = (
-            f'<span style="color:#2563eb;font-weight:700;">{suggested}{unit}</span>'
-            if changed else
-            f'<span class="sug-ok">{suggested}{unit} ✓</span>'
-        )
-        return f"<tr><td>{label}</td><td>{val_html}</td></tr>"
-
-    sug_table = (
-        _sug_row("Print Speed",   speed, suggested_speed, " mm/s")
-        + _sug_row("Temperature", temp,  suggested_temp)
-        + _sug_row("Cooling fan", fan,   suggested_fan, "%")
-        + _sug_row("Layer height",layer, suggested_layer, " mm")
-    )
-
-    col_sug, col_alt = st.columns([1.1, 1])
-    with col_sug:
+    if not (lr_prob is not None or nn_prob is not None):
         st.markdown(
-            f"""
-            <div class="card">
-              <div style="font-size:1rem;font-weight:600;color:#111827;margin-bottom:14px;">
-                Recommended settings
-              </div>
-              <table class="sug-table">{sug_table}</table>
-              <a class="apply-link" style="display:inline-block;margin-top:14px;">Apply suggestions ↗</a>
-            </div>
-            """,
+            '<div class="card" style="color:#9ca3af;text-align:center;padding:40px;">'
+            'Configure your print settings and click <strong>Predict ↗</strong> to see recommendations.'
+            '</div>',
             unsafe_allow_html=True,
         )
+    else:
+        suggested_speed = min(speed, 45) if (material == "PETG" and speed > 45) else speed
+        suggested_temp  = {"PLA": 215, "PETG": 235, "ABS": 250, "TPU": 220, "PC": 275}.get(material, temp)
+        suggested_fan   = fan
+        suggested_layer = layer
 
-    with col_alt:
-        if gcode_feat:
-            flat = gcode_feat.get("max_z_height_mm", 0) < 10 and gcode_feat.get("total_layers", 0) < 60
-            suggestion_text = (
-                "Flat geometry detected. This part may be better suited for laser cutting, "
-                "which offers higher precision for planar designs."
-                if flat else
-                "Complex 3D geometry detected. FDM printing is well-suited to this part shape."
+        def _sug_row(label, current, suggested, unit=""):
+            changed  = abs(current - suggested) > 0.001
+            val_html = (
+                f'<span style="color:#2563eb;font-weight:700;">{suggested}{unit}</span>'
+                if changed else
+                f'<span class="sug-ok">{suggested}{unit} ✓</span>'
             )
-        else:
-            suggestion_text = "Upload a .gcode or .3mf file to receive geometry-specific fabrication suggestions."
+            return f"<tr><td>{label}</td><td>{val_html}</td></tr>"
 
-        st.markdown(
-            f"""
-            <div class="card">
-              <div style="font-size:1rem;font-weight:600;color:#111827;margin-bottom:10px;">
-                Alternative method
-              </div>
-              <p style="font-size:0.88rem;color:#4b5563;line-height:1.6;margin:0 0 12px 0;">
-                {suggestion_text}
-              </p>
-              <a class="apply-link">Learn more ↗</a>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        sug_table = (
+            _sug_row("Print Speed",   speed, suggested_speed, " mm/s")
+            + _sug_row("Temperature", temp,  suggested_temp)
+            + _sug_row("Cooling fan", fan,   suggested_fan, "%")
+            + _sug_row("Layer height",layer, suggested_layer, " mm")
         )
+
+        col_sug, col_alt = st.columns([1.1, 1])
+        with col_sug:
+            st.markdown(
+                f"""
+                <div class="card">
+                  <div style="font-size:1rem;font-weight:600;color:#111827;margin-bottom:14px;">
+                    Recommended settings
+                  </div>
+                  <table class="sug-table">{sug_table}</table>
+                  <a class="apply-link" style="display:inline-block;margin-top:14px;">Apply suggestions ↗</a>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with col_alt:
+            if gcode_feat:
+                flat = gcode_feat.get("max_z_height_mm", 0) < 10 and gcode_feat.get("total_layers", 0) < 60
+                suggestion_text = (
+                    "Flat geometry detected. This part may be better suited for laser cutting, "
+                    "which offers higher precision for planar designs."
+                    if flat else
+                    "Complex 3D geometry detected. FDM printing is well-suited to this part shape."
+                )
+            else:
+                suggestion_text = "Upload a .gcode or .3mf file to receive geometry-specific fabrication suggestions."
+
+            st.markdown(
+                f"""
+                <div class="card">
+                  <div style="font-size:1rem;font-weight:600;color:#111827;margin-bottom:10px;">
+                    Alternative method
+                  </div>
+                  <p style="font-size:0.88rem;color:#4b5563;line-height:1.6;margin:0 0 12px 0;">
+                    {suggestion_text}
+                  </p>
+                  <a class="apply-link">Learn more ↗</a>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
 with tab_fs:
     if not gcode_feat:
