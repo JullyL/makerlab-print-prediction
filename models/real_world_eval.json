@@ -1,0 +1,29 @@
+{
+  "n_samples": 57,
+  "class_dist": {
+    "fail": 35,
+    "success": 22
+  },
+  "logistic_regression": {
+    "accuracy": 0.6316,
+    "precision": 0.5455,
+    "recall": 0.2727,
+    "f1": 0.3636,
+    "auc": 0.5604,
+    "tp": 6.0,
+    "fp": 5.0,
+    "fn": 16.0,
+    "tn": 30.0
+  },
+  "neural_network": {
+    "accuracy": 0.6491,
+    "precision": 0.625,
+    "recall": 0.2273,
+    "f1": 0.3333,
+    "auc": 0.5312,
+    "tp": 5.0,
+    "fp": 3.0,
+    "fn": 17.0,
+    "tn": 32.0
+  }
+}
