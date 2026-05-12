@@ -17,13 +17,6 @@ _ROOT         = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 PROCESSED_DIR = os.path.join(_ROOT, "data", "raw", "processed")
 MODELS_DIR    = os.path.join(_ROOT, "models")
 
-GEO_COLS = [
-    "total_layers", "max_z_height_mm", "total_toolpath_mm",
-    "extrusion_travel_ratio", "est_print_duration_sec", "path_variability",
-    "bbox_x_mm", "bbox_y_mm", "aspect_ratio",
-    "first_layer_toolpath_mm", "max_layer_toolpath_mm", "sparse_layer_fraction",
-    "avg_feedrate_mms", "feedrate_cv", "retraction_count", "retraction_density",
-]
 
 
 @st.cache_resource(show_spinner=False)
@@ -74,10 +67,11 @@ def nn_forward(weights, x):
 
 
 def scale_geo_features(geo_feat_dict, geo_scaler):
-    col_min = np.array(geo_scaler["min"])
-    col_max = np.array(geo_scaler["max"])
-    raw = np.array([geo_feat_dict.get(c, 0.0) for c in GEO_COLS], dtype=np.float32)
-    rng = np.where(col_max - col_min == 0, 1.0, col_max - col_min)
+    geo_cols = geo_scaler["geo_cols"]
+    col_min  = np.array(geo_scaler["min"])
+    col_max  = np.array(geo_scaler["max"])
+    raw      = np.array([geo_feat_dict.get(c, 0.0) for c in geo_cols], dtype=np.float32)
+    rng      = np.where(col_max - col_min == 0, 1.0, col_max - col_min)
     return np.clip((raw - col_min) / rng, 0.0, 1.0)
 
 
@@ -112,22 +106,38 @@ def compute_risk_flags(material, speed, temp, cooling, layer_h):
     return flags
 
 
+# ── Persist slider values across page navigation ──────────────────────────────
+# Pre-initialise session_state keys before widgets render so Streamlit 1.51+
+# does not reset them to the hardcoded `value=` on every page re-mount.
+_SLIDER_DEFAULTS = {
+    "ps_material": "PLA",
+    "ps_printer":  "Bambu X1C",
+    "ps_speed":    150,    # Bambu X1C moderate inner-wall speed; training mean ~300 mm/s
+    "ps_temp":     220,    # PLA on Bambu; also covers initial-layer min (220°C in training data)
+    "ps_fan":      80,     # Good PLA cooling; training mean ~65%
+    "ps_layer":    0.20,   # Standard 0.4 mm nozzle layer; training mean ~0.24 mm
+}
+for _k, _v in _SLIDER_DEFAULTS.items():
+    if _k not in st.session_state:
+        st.session_state[_k] = _v
+
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     section_label("Print Settings")
 
-    material     = st.selectbox("Material",     options=["PLA", "PETG", "ABS", "TPU", "PC"],                key="ps_material")
-    printer_type = st.selectbox("Printer Type", options=["Bambu X1C", "Bambu P1S", "Bambu A1", "Other FDM"], key="ps_printer")
-    speed  = st.slider("Print speed (mm/s)", 10,   500,  75,   5,    key="ps_speed")
-    temp   = st.slider("Temperature (°C)",  150,   320,  210,  5,    key="ps_temp")
-    fan    = st.slider("Cooling fan%",        0,   100,   80,  5,    key="ps_fan")
-    layer  = st.slider("Layer height (mm)", 0.05, 0.40,  0.20, 0.01, key="ps_layer", format="%.2f")
+    _col_mat, _col_prt = st.columns(2)
+    material     = _col_mat.selectbox("Material",     options=["PLA", "PETG", "ABS", "TPU", "PC"],                key="ps_material")
+    printer_type = _col_prt.selectbox("Printer Type", options=["Bambu X1C", "Bambu P1S", "Bambu A1", "Other FDM"], key="ps_printer")
+    speed  = st.slider("Print speed (mm/s)", 10,   500,  key="ps_speed",  step=5)
+    temp   = st.slider("Temperature (°C)",  150,   320,  key="ps_temp",   step=5)
+    fan    = st.slider("Cooling fan%",        0,   100,  key="ps_fan",    step=5)
+    layer  = st.slider("Layer height (mm)", 0.05, 0.40,  key="ps_layer",  step=0.01, format="%.2f")
 
-    st.markdown("<div style='margin-top:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:4px'></div>", unsafe_allow_html=True)
 
     if st.button("Reset defaults", type="secondary"):
         clear_keys = ("gcode_features", "uploaded_name", "lr_prob", "nn_prob",
-                      "combined_prob", "X", "raw_input",
+                      "combined_lr_prob", "combined_nn_prob", "X", "raw_input",
                       "ps_material", "ps_printer", "ps_speed", "ps_temp", "ps_fan", "ps_layer")
         for key in clear_keys:
             st.session_state.pop(key, None)
@@ -141,94 +151,102 @@ except FileNotFoundError as e:
     st.error(f"Preprocessing artifacts missing: {e}")
     st.stop()
 
-lr_weights      = load_model(os.path.join(PROCESSED_DIR, "lr_weights.pkl"))
-nn_weights      = load_model(os.path.join(MODELS_DIR,    "nn_weights.pkl"))
-combined_nn_w   = load_model(os.path.join(MODELS_DIR,    "combined_nn_weights.pkl"))
-geo_scaler      = load_geo_scaler()
+lr_weights    = load_model(os.path.join(PROCESSED_DIR, "lr_weights.pkl"))
+nn_weights    = load_model(os.path.join(MODELS_DIR,    "nn_weights.pkl"))
+combined_lr_w = load_model(os.path.join(MODELS_DIR,    "combined_lr_weights.pkl"))
+combined_nn_w = load_model(os.path.join(MODELS_DIR,    "combined_nn_weights.pkl"))
+geo_scaler    = load_geo_scaler()
 
-has_combined = combined_nn_w is not None and geo_scaler is not None
+has_combined = (combined_lr_w is not None or combined_nn_w is not None) and geo_scaler is not None
 
 # ── File upload ───────────────────────────────────────────────────────────────
-uploaded = st.file_uploader(
-    "Upload a .gcode or .gcode.3mf file",
-    type=["gcode", "3mf"],
-    label_visibility="collapsed",
-)
+# Use an incrementing key so clearing the widget is a true reset.
+if "uploader_key" not in st.session_state:
+    st.session_state["uploader_key"] = 0
 
-if uploaded is not None:
-    if st.session_state.get("uploaded_name") != uploaded.name:
+if "uploaded_name" not in st.session_state:
+    # Phase 1 — no file yet: show the drop zone
+    uploaded = st.file_uploader(
+        "Upload a .gcode or .gcode.3mf file",
+        type=["gcode", "3mf"],
+        label_visibility="collapsed",
+        key=f"uploader_{st.session_state['uploader_key']}",
+    )
+    if uploaded is not None:
         with st.spinner("Extracting G-code features…"):
             try:
                 st.session_state["gcode_features"] = extract_features_from_bytes(uploaded.read())
                 st.session_state["uploaded_name"]  = uploaded.name
             except Exception as exc:
                 st.error(f"Feature extraction failed: {exc}")
-
-if "uploaded_name" in st.session_state:
+        st.rerun()   # switch immediately to banner view
+else:
+    # Phase 2 — file loaded: show banner + single Clear button, hide uploader
     col_banner, col_clear = st.columns([6, 1])
     with col_banner:
         file_banner(st.session_state["uploaded_name"])
     with col_clear:
         if st.button("✕ Clear", type="secondary", use_container_width=True):
-            for _k in ("gcode_features", "uploaded_name", "lr_prob", "nn_prob", "combined_prob", "X", "raw_input"):
+            st.session_state["uploader_key"] += 1   # force widget reset
+            for _k in ("gcode_features", "uploaded_name", "lr_prob", "nn_prob",
+                       "combined_lr_prob", "combined_nn_prob", "X", "raw_input"):
                 st.session_state.pop(_k, None)
             st.rerun()
-    gcode_feat = st.session_state.get("gcode_features", {})
 
-    if gcode_feat:
-        def _dur(secs):
-            if secs <= 0: return "—"
-            h, m = divmod(int(secs), 3600)
-            m, s = divmod(m, 60)
-            return f"{h}h {m:02d}m" if h else f"{m}m {s:02d}s"
+gcode_feat = st.session_state.get("gcode_features", {})
 
-        def _row(label, value, last=False):
-            border = "" if last else "border-bottom:1px solid #f3f4f6;"
-            return (
-                f"<tr style='{border}'>"
-                f"<td style='padding:7px 4px;color:#6b7280;'>{label}</td>"
-                f"<td style='padding:7px 4px;text-align:right;font-weight:500;color:#374151;'>{value}</td>"
-                f"</tr>"
-            )
+if gcode_feat:
+    def _dur(secs):
+        if secs <= 0: return "—"
+        h, m = divmod(int(secs), 3600)
+        m, s = divmod(m, 60)
+        return f"{h}h {m:02d}m" if h else f"{m}m {s:02d}s"
 
-        def _group(name):
-            return (
-                f"<tr><td colspan='2' style='padding:8px 4px 4px;font-size:0.72rem;font-weight:600;"
-                f"letter-spacing:.07em;text-transform:uppercase;color:#9ca3af;'>{name}</td></tr>"
-            )
+    def _row(label, value, last=False):
+        border = "" if last else "border-bottom:1px solid #f3f4f6;"
+        return (
+            f"<tr style='{border}'>"
+            f"<td style='padding:7px 4px;color:#6b7280;'>{label}</td>"
+            f"<td style='padding:7px 4px;text-align:right;font-weight:500;color:#374151;'>{value}</td>"
+            f"</tr>"
+        )
 
-        f = gcode_feat
-        rows_html = "".join([
-            _group("Geometry"),
-            _row("Total layers",              f.get("total_layers", "—")),
-            _row("Max Z height",              f"{f.get('max_z_height_mm', '—')} mm"),
-            _row("Bounding box",              f"{f.get('bbox_x_mm', 0):.1f} × {f.get('bbox_y_mm', 0):.1f} mm"),
-            _row("Aspect ratio (H/W)",        f.get("aspect_ratio", "—")),
-            _group("Toolpath"),
-            _row("Total toolpath",            f"{f.get('total_toolpath_mm', 0):,.0f} mm"),
-            _row("Extrusion / travel ratio",  f.get("extrusion_travel_ratio", "—")),
-            _row("Path variability",          f.get("path_variability", "—")),
-            _row("First-layer toolpath",      f"{f.get('first_layer_toolpath_mm', 0):,.0f} mm"),
-            _row("Max single-layer toolpath", f"{f.get('max_layer_toolpath_mm', 0):,.0f} mm"),
-            _row("Sparse layer fraction",     f"{f.get('sparse_layer_fraction', 0):.1%}"),
-            _group("Speed"),
-            _row("Avg feedrate",              f"{f.get('avg_feedrate_mms', 0):.1f} mm/s"),
-            _row("Feedrate variation (CV)",   f.get("feedrate_cv", "—")),
-            _group("Retraction"),
-            _row("Retraction count",          f"{f.get('retraction_count', 0):,}"),
-            _row("Retraction density",        f"{f.get('retraction_density', 0):.2f} / layer"),
-            _group("Timing"),
-            _row("Est. print duration",       _dur(f.get("est_print_duration_sec", 0)), last=True),
-        ])
+    def _group(name):
+        return (
+            f"<tr><td colspan='2' style='padding:8px 4px 4px;font-size:0.72rem;font-weight:600;"
+            f"letter-spacing:.07em;text-transform:uppercase;color:#9ca3af;'>{name}</td></tr>"
+        )
 
-        with st.expander("Extracted G-code features", expanded=False):
-            st.markdown(
-                f"<table style='width:100%;border-collapse:collapse;font-size:0.85rem;'>"
-                f"{rows_html}</table>",
-                unsafe_allow_html=True,
-            )
-else:
-    gcode_feat = {}
+    f = gcode_feat
+    rows_html = "".join([
+        _group("Geometry"),
+        _row("Total layers",              f.get("total_layers", "—")),
+        _row("Max Z height",              f"{f.get('max_z_height_mm', '—')} mm"),
+        _row("Bounding box",              f"{f.get('bbox_x_mm', 0):.1f} × {f.get('bbox_y_mm', 0):.1f} mm"),
+        _row("Aspect ratio (H/W)",        f.get("aspect_ratio", "—")),
+        _group("Toolpath"),
+        _row("Total toolpath",            f"{f.get('total_toolpath_mm', 0):,.0f} mm"),
+        _row("Extrusion / travel ratio",  f.get("extrusion_travel_ratio", "—")),
+        _row("Path variability",          f.get("path_variability", "—")),
+        _row("First-layer toolpath",      f"{f.get('first_layer_toolpath_mm', 0):,.0f} mm"),
+        _row("Max single-layer toolpath", f"{f.get('max_layer_toolpath_mm', 0):,.0f} mm"),
+        _row("Sparse layer fraction",     f"{f.get('sparse_layer_fraction', 0):.1%}"),
+        _group("Speed"),
+        _row("Avg feedrate",              f"{f.get('avg_feedrate_mms', 0):.1f} mm/s"),
+        _row("Feedrate variation (CV)",   f.get("feedrate_cv", "—")),
+        _group("Retraction"),
+        _row("Retraction count",          f"{f.get('retraction_count', 0):,}"),
+        _row("Retraction density",        f"{f.get('retraction_density', 0):.2f} / layer"),
+        _group("Timing"),
+        _row("Est. print duration",       _dur(f.get("est_print_duration_sec", 0)), last=True),
+    ])
+
+    with st.expander("Extracted G-code features", expanded=False):
+        st.markdown(
+            f"<table style='width:100%;border-collapse:collapse;font-size:0.85rem;'>"
+            f"{rows_html}</table>",
+            unsafe_allow_html=True,
+        )
 
 # ── Raw slicer input ──────────────────────────────────────────────────────────
 raw_input = {
@@ -250,7 +268,7 @@ raw_input = {
     "enable_support":                   0.0,
 }
 
-lr_prob = nn_prob = combined_prob = None
+lr_prob = nn_prob = combined_lr_prob = combined_nn_prob = None
 
 # ── Settings pills + Predict button ──────────────────────────────────────────
 pills = (
@@ -271,7 +289,8 @@ st.markdown(
     f'color:#9ca3af;">Settings</span>{pills}</div>',
     unsafe_allow_html=True,
 )
-predict_btn = st.button("Predict ↗", type="primary", use_container_width=True)
+predict_btn = st.button("Predict ↗", type="primary", use_container_width=True,
+                        disabled="uploaded_name" not in st.session_state)
 
 if predict_btn:
     try:
@@ -281,26 +300,32 @@ if predict_btn:
         if nn_weights is not None:
             nn_prob = nn_forward(nn_weights, X[0:1]) * 100
 
-        # Combined model — only when file is uploaded and artifacts exist
+        # Combined models — only when file is uploaded and scaler is available
         if gcode_feat and has_combined:
-            X_geo   = scale_geo_features(gcode_feat, geo_scaler)
-            X_comb  = np.hstack([X[0], X_geo]).astype(np.float32)
-            combined_prob = nn_forward(combined_nn_w, X_comb.reshape(1, -1)) * 100
+            X_geo  = scale_geo_features(gcode_feat, geo_scaler)
+            X_comb = np.hstack([X[0], X_geo]).astype(np.float32).reshape(1, -1)
+            if combined_lr_w is not None:
+                combined_lr_prob = lr_sigmoid(combined_lr_w, X_comb[0]) * 100
+            if combined_nn_w is not None:
+                combined_nn_prob = nn_forward(combined_nn_w, X_comb) * 100
 
-        st.session_state["lr_prob"]       = lr_prob
-        st.session_state["nn_prob"]       = nn_prob
-        st.session_state["combined_prob"] = combined_prob
-        st.session_state["raw_input"]     = raw_input
-        st.session_state["X"]             = X
+        st.session_state["lr_prob"]          = lr_prob
+        st.session_state["nn_prob"]          = nn_prob
+        st.session_state["combined_lr_prob"] = combined_lr_prob
+        st.session_state["combined_nn_prob"] = combined_nn_prob
+        st.session_state["raw_input"]        = raw_input
+        st.session_state["X"]                = X
     except Exception as exc:
         st.warning(f"Preprocessing issue: {exc}")
 
 if lr_prob is None:
-    lr_prob       = st.session_state.get("lr_prob")
+    lr_prob          = st.session_state.get("lr_prob")
 if nn_prob is None:
-    nn_prob       = st.session_state.get("nn_prob")
-if combined_prob is None:
-    combined_prob = st.session_state.get("combined_prob")
+    nn_prob          = st.session_state.get("nn_prob")
+if combined_lr_prob is None:
+    combined_lr_prob = st.session_state.get("combined_lr_prob")
+if combined_nn_prob is None:
+    combined_nn_prob = st.session_state.get("combined_nn_prob")
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 tab_results, tab_sug, tab_fs = st.tabs(["Results", "Suggestions", "File summary"])
@@ -332,14 +357,17 @@ with tab_results:
                 unsafe_allow_html=True,
             )
     else:
-        # Primary score: combined model if available, otherwise average of LR + NN
-        if combined_prob is not None:
-            primary_fail = combined_prob
-            primary_label = "Combined Model (Settings + Geometry)"
+        # Primary score: best combined model if available, else average of slicer-only
+        if combined_nn_prob is not None:
+            primary_fail  = combined_nn_prob
+            primary_label = "Combined NN * (Settings + Geometry)"
+        elif combined_lr_prob is not None:
+            primary_fail  = combined_lr_prob
+            primary_label = "Combined LR * (Settings + Geometry)"
         else:
             probs = [p for p in [lr_prob, nn_prob] if p is not None]
-            primary_fail = sum(probs) / len(probs)
-            primary_label = "Settings-only models"
+            primary_fail  = sum(probs) / len(probs)
+            primary_label = "Slicer-only ensemble"
 
         success = 100 - primary_fail
 
@@ -366,17 +394,19 @@ with tab_results:
             )
         with col_conf:
             bars = ""
-            if combined_prob is not None:
-                bars += conf_bar_html("Combined NN ★", 100 - combined_prob, "#6366f1")
             if nn_prob is not None:
-                bars += conf_bar_html("Neural Network", 100 - nn_prob, "#22c55e")
+                bars += conf_bar_html("Neural Network", 100 - nn_prob,          "#22c55e")
             if lr_prob is not None:
-                bars += conf_bar_html("Logistic Reg.", 100 - lr_prob, "#f59e0b")
+                bars += conf_bar_html("Logistic Reg.",  100 - lr_prob,          "#f59e0b")
+            if combined_nn_prob is not None:
+                bars += conf_bar_html("Combined NN *",  100 - combined_nn_prob, "#6366f1")
+            if combined_lr_prob is not None:
+                bars += conf_bar_html("Combined LR *",  100 - combined_lr_prob, "#8b5cf6")
 
             note = ""
-            if combined_prob is None and has_combined:
+            if combined_nn_prob is None and has_combined:
                 note = ("<div style='font-size:0.75rem;color:#9ca3af;margin-top:10px;'>"
-                        "⬆ Upload a .3mf file to activate the Combined NN model (AUC 0.60 on real-world data)</div>")
+                        "* Combined models activate after uploading a .3mf file</div>")
 
             st.markdown(
                 f'<div class="card" style="padding:28px 20px;">'

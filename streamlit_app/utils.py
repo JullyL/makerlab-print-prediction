@@ -33,9 +33,47 @@ header    {{ visibility: hidden; }}
     background-color: #f9fafb;
     border-right: 1px solid #e5e7eb;
 }}
+/* Always keep sidebar open — override collapsed transform */
+section[data-testid="stSidebar"] {{
+    transform: translateX(0) !important;
+    min-width: 340px !important;
+    width: 340px !important;
+    display: block !important;
+    visibility: visible !important;
+}}
+/* Hide both the « collapse button and the › expand arrow */
+[data-testid="stSidebarCollapseButton"],
+[data-testid="collapsedControl"] {{
+    display: none !important;
+}}
 [data-testid="stSidebar"] .block-container {{
     padding-top: 1rem !important;
     max-width: 100%;
+}}
+
+/* Compact sidebar — reduce per-widget container gap only */
+[data-testid="stSidebar"] .stElementContainer {{
+    margin-bottom: 2px !important;
+    margin-top: 0 !important;
+}}
+/* Shrink the empty space inside each slider wrapper */
+[data-testid="stSidebar"] [data-testid="stSlider"] {{
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+}}
+/* Tighten widget labels */
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"] {{
+    margin-bottom: 2px !important;
+    min-height: unset !important;
+}}
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p {{
+    font-size: 0.82rem !important;
+    line-height: 1.3 !important;
+    margin: 0 !important;
+}}
+/* Reduce the gap the baseweb select dropdown adds below itself */
+[data-testid="stSidebar"] [data-baseweb="select"] {{
+    margin-bottom: 2px !important;
 }}
 [data-testid="stSidebarNav"] {{
     padding-top: 0;
@@ -47,7 +85,7 @@ header    {{ visibility: hidden; }}
     letter-spacing: 0.08em;
     color: {GRAY_TEXT};
     text-transform: uppercase;
-    margin: 1rem 0 0.4rem 0;
+    margin: 0.3rem 0 0.3rem 0;
     padding-left: 0.1rem;
 }}
 
@@ -294,6 +332,7 @@ header    {{ visibility: hidden; }}
 button[data-baseweb="tab"] {{
     font-size: 0.9rem !important;
 }}
+
 
 [data-testid="stFileUploader"] > section {{
     border: 2px dashed {BLUE} !important;
